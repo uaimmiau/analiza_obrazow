@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Image Upload</title>
+    </head>
+    <body>
+        <form
+            id="uploadForm"
+            action="/upload"
+            method="post"
+            enctype="multipart/form-data"
+        >
+            <input type="file" name="file" id="fileInput" />
+            <!-- <button type="submit">Upload</button> -->
+        </form>
+        <div>
+            <canvas id="imageCanvas" style="border: 1px solid black"></canvas>
+        </div>
+        <button id="clipButton" disabled>Clip and Submit</button>
+        <script>
+            const fileInput = document.getElementById("fileInput");
+            const uploadForm = document.getElementById("uploadForm");
+            const canvas = document.getElementById("imageCanvas");
+            const ctx = canvas.getContext("2d");
+            const clipButton = document.getElementById("clipButton");
+            let isClipped = false;
+
+            let img = new Image();
+            let startX, startY, endX, endY;
+
+            // Load image onto canvas
+            fileInput.addEventListener("change", (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            };
+
+            // Capture clipping region
+            canvas.addEventListener("mousedown", (event) => {
+                const rect = canvas.getBoundingClientRect();
+                startX = event.clientX - rect.left;
+                startY = event.clientY - rect.top;
+            });
+
+            canvas.addEventListener("mouseup", (event) => {
+                const rect = canvas.getBoundingClientRect();
+                endX = event.clientX - rect.left;
+                endY = event.clientY - rect.top;
+
+                // Draw rectangle to visualize the selected region
+                ctx.drawImage(img, 0, 0); // Reset canvas
+                ctx.beginPath();
+                ctx.rect(startX, startY, endX - startX, endY - startY);
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                clipButton.disabled = false; // Enable clip button
+            });
+
+            // Send clipped region to backend
+            clipButton.addEventListener("click", () => {
+                const clippedCanvas = document.createElement("canvas");
+                const clippedCtx = clippedCanvas.getContext("2d");
+
+                const width = endX - startX;
+                const height = endY - startY;
+
+                clippedCanvas.width = width;
+                clippedCanvas.height = height;
+                clippedCtx.drawImage(
+                    img,
+                    startX,
+                    startY,
+                    width,
+                    height,
+                    0,
+                    0,
+                    width,
+                    height
+                );
+
+                clippedCanvas.toBlob((blob) => {
+                    const formData = new FormData();
+                    formData.append("clippedImage", blob, "clipped.png");
+
+                    fetch("/clip", {
+                        method: "POST",
+                        body: formData,
+                    })
+                        .then((response) => response.text())
+                        .then((data) => {
+                            alert(data);
+                        })
+                        .catch((err) => console.error("Error:", err));
+                });
+            });
+        </script>
+    </body>
+</html>
