@@ -31,7 +31,7 @@ app.post("/clip", upload.single("clippedImage"), (req, res) => {
         return res.status(400).send("No clipped image uploaded");
     }
 
-    const command = `${config.condaPath} run -n ao_projekt python demo.py --Transformation TPS --FeatureExtraction ResNet --SequenceModeling BiLSTM --Prediction Attn --image_folder output --saved_model best_accuracy.pth`;
+    const command = `${config.condaPath} run -n machine_learning python demo.py --Transformation TPS --FeatureExtraction ResNet --SequenceModeling BiLSTM --Prediction Attn --image_folder output --saved_model best_accuracy.pth`;
 
     exec(command, (error, stdout, stderr) => {
         if (error) {
